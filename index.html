@@ -416,6 +416,19 @@
     function showWaitingForHardware() {
       hardwareWaitingEl.classList.remove("hidden");
       hardwareOfflineEl.classList.add("hidden");
+
+      // No hardware data yet: show zero/default values.
+      temperatureEl.textContent = "0.0 °C";
+      humidityEl.textContent = "0.0 %";
+      statusEl.textContent = "OFFLINE";
+      wifiEl.textContent = "DISCONNECTED";
+      highLimitEl.textContent = "0.0 °C";
+      lowLimitEl.textContent = "0.0 °C";
+      deviceIPEl.textContent = "0.0.0.0";
+
+      temperatureEl.classList.remove("high");
+      statusEl.classList.remove("high");
+      warningEl.classList.add("hidden");
     }
 
     function showHardwareLive() {
@@ -430,6 +443,24 @@
       hardwareOfflineEl.classList.remove("hidden");
       firebaseStatusEl.classList.add("offline");
       firebaseStatusEl.textContent = "Hardware Offline";
+
+      // Reset dashboard values when ESP8266 disconnects.
+      temperatureEl.textContent = "0.0 °C";
+      humidityEl.textContent = "0.0 %";
+      statusEl.textContent = "OFFLINE";
+      wifiEl.textContent = "DISCONNECTED";
+      highLimitEl.textContent = "0.0 °C";
+      lowLimitEl.textContent = "0.0 °C";
+      deviceIPEl.textContent = "0.0.0.0";
+
+      temperatureEl.classList.remove("high");
+      statusEl.classList.remove("high");
+      warningEl.classList.add("hidden");
+
+      // Clear old graph values so stale hardware readings are not shown.
+      labels.length = 0;
+      temperatureData.length = 0;
+      chart.update();
     }
 
     function resetHardwareTimer() {
