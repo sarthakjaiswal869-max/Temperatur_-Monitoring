@@ -320,7 +320,8 @@
     import {
       getDatabase,
       ref,
-      onValue
+      onValue,
+      get
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
@@ -400,11 +401,13 @@
     const hardwareOfflineEl =
       document.getElementById("hardwareOffline");
 
-    // ESP8266 uploads Firebase data every 5 seconds.
-    // If no new data arrives for 20 seconds, hardware is considered offline.
-    const HARDWARE_TIMEOUT = 20000;
+    // ESP8266 heartbeat is written to lastSeen every 5 seconds.
+    // Dashboard checks it every 1 second.
+    const HARDWARE_TIMEOUT = 5000;
+    const HEARTBEAT_CHECK_INTERVAL = 1000;
 
     let hardwareTimer = null;
+    let heartbeatInterval = null;
     let monitoringStarted = false;
 
     // Important:
@@ -457,26 +460,58 @@
       statusEl.classList.remove("high");
       warningEl.classList.add("hidden");
 
-      // Clear old graph values so stale hardware readings are not shown.
-      labels.length = 0;
-      temperatureData.length = 0;
-      chart.update();
+      // IMPORTANT: Keep the existing graph during hardware offline.
+      // Only the live metric cards are reset to zero.
+      // The graph remains as historical data until new readings arrive.
     }
 
     function resetHardwareTimer() {
-      if (hardwareTimer) {
-        clearTimeout(hardwareTimer);
-      }
+      if (hardwareTimer) clearTimeout(hardwareTimer);
 
       showHardwareLive();
 
       hardwareTimer = setTimeout(() => {
-        // Hardware was live before, so keep the dashboard visible
-        // and show OFFLINE instead of hiding/refreshing the dashboard.
-        if (hardwareWasLive) {
-          showHardwareOffline();
-        }
+        if (hardwareWasLive) showHardwareOffline();
       }, HARDWARE_TIMEOUT);
+    }
+
+    // =====================================================
+    // HARDWARE HEARTBEAT CHECK
+    // =====================================================
+
+    async function checkHardwareHeartbeat() {
+      if (!monitoringStarted) return;
+
+      try {
+        const heartbeatRef = ref(db, "temperatureMonitoring/lastSeen");
+        const snapshot = await get(heartbeatRef);
+        const lastSeen = snapshot.val();
+
+        if (lastSeen === null || lastSeen === undefined) {
+          if (hardwareWasLive) showHardwareOffline();
+          else showWaitingForHardware();
+          return;
+        }
+
+        const age = Date.now() - Number(lastSeen);
+
+        if (Number.isFinite(age) && age <= HARDWARE_TIMEOUT) {
+          hardwareWasLive = true;
+          showHardwareLive();
+        } else if (hardwareWasLive) {
+          showHardwareOffline();
+        } else {
+          showWaitingForHardware();
+        }
+      } catch (error) {
+        console.error("Heartbeat check error:", error);
+      }
+    }
+
+    function startHardwareHeartbeatMonitor() {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      checkHardwareHeartbeat();
+      heartbeatInterval = setInterval(checkHardwareHeartbeat, HEARTBEAT_CHECK_INTERVAL);
     }
 
 
@@ -598,7 +633,8 @@
 
         firebaseStatusEl.textContent = "Waiting for Hardware";
         showWaitingForHardware();
-
+        monitoringStarted = true;
+        startHardwareHeartbeatMonitor();
         startRealtimeMonitoring();
 
       }
@@ -669,7 +705,8 @@
             return;
           }
 
-          // Hardware is now confirmed live.
+          // Heartbeat monitor is the hardware-live authority.
+          // Keep the graph/live values updated when Firebase sends readings.
           hardwareWasLive = true;
           resetHardwareTimer();
 
@@ -769,7 +806,7 @@
             new Date().toLocaleTimeString();
 
           labels.push(now);
-          temperatureData.push(temperature);
+        temperatureData.push(temperature);
 
 
           // Keep latest 30 readings
