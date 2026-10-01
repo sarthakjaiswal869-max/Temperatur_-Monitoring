@@ -102,10 +102,19 @@
     .normal { color: #15803d; }
     .high { color: #dc2626; }
     .offline { color: #dc2626; font-weight: bold; }
-    .offline-banner {
+    .hardware-message {
       border: 2px solid #dc2626;
       background: #fee2e2;
       color: #991b1b;
+      font-weight: bold;
+      padding: 15px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+    }
+    .waiting-message {
+      border: 2px solid #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
       font-weight: bold;
       padding: 15px;
       border-radius: 14px;
@@ -216,10 +225,16 @@
       🔴 HIGH TEMPERATURE WARNING
     </div>
 
-    <div id="hardwareOffline" class="offline-banner hidden">
-      🔴 HARDWARE OFFLINE — No new ESP8266 data received.
+    <div id="hardwareWaiting" class="waiting-message hidden">
+      🔵 WAITING FOR ESP8266
       <br>
-      <span class="small">Dashboard will refresh automatically.</span>
+      <span class="small">Dashboard data will appear when the hardware comes online.</span>
+    </div>
+
+    <div id="hardwareOffline" class="hardware-message hidden">
+      🔴 ESP8266 HARDWARE OFFLINE
+      <br>
+      <span class="small">The dashboard was live, but no new hardware data has been received.</span>
     </div>
 
     <div class="card">
@@ -379,32 +394,57 @@
     const lastUpdateEl =
       document.getElementById("lastUpdate");
 
+    const hardwareWaitingEl =
+      document.getElementById("hardwareWaiting");
+
     const hardwareOfflineEl =
       document.getElementById("hardwareOffline");
 
-    // ESP8266 uploads data every 5 seconds.
-    // 20 seconds without a new Firebase event = hardware offline.
+    // ESP8266 uploads Firebase data every 5 seconds.
+    // If no new data arrives for 20 seconds, hardware is considered offline.
     const HARDWARE_TIMEOUT = 20000;
 
     let hardwareTimer = null;
     let monitoringStarted = false;
 
-    function resetHardwareTimer() {
-      if (hardwareTimer) clearTimeout(hardwareTimer);
+    // Important:
+    // false = hardware has NEVER been seen online in this session.
+    // true  = hardware was live at least once, so a later disconnect
+    //         should show OFFLINE on the dashboard.
+    let hardwareWasLive = false;
 
+    function showWaitingForHardware() {
+      hardwareWaitingEl.classList.remove("hidden");
+      hardwareOfflineEl.classList.add("hidden");
+    }
+
+    function showHardwareLive() {
+      hardwareWaitingEl.classList.add("hidden");
       hardwareOfflineEl.classList.add("hidden");
       firebaseStatusEl.classList.remove("offline");
       firebaseStatusEl.textContent = "Live";
+    }
+
+    function showHardwareOffline() {
+      hardwareWaitingEl.classList.add("hidden");
+      hardwareOfflineEl.classList.remove("hidden");
+      firebaseStatusEl.classList.add("offline");
+      firebaseStatusEl.textContent = "Hardware Offline";
+    }
+
+    function resetHardwareTimer() {
+      if (hardwareTimer) {
+        clearTimeout(hardwareTimer);
+      }
+
+      showHardwareLive();
 
       hardwareTimer = setTimeout(() => {
-        hardwareOfflineEl.classList.remove("hidden");
-        firebaseStatusEl.classList.add("offline");
-        firebaseStatusEl.textContent = "Hardware Offline";
-
-        // Give the user 3 seconds to see the message, then refresh.
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
+        // Hardware was live before, so keep the dashboard visible
+        // and show OFFLINE instead of hiding/refreshing the dashboard.
+        if (hardwareWasLive) {
+          showHardwareOffline();
+        }
       }, HARDWARE_TIMEOUT);
     }
 
@@ -502,8 +542,12 @@
 
     logoutBtn.addEventListener("click", async () => {
 
-      if (hardwareTimer) clearTimeout(hardwareTimer);
+      if (hardwareTimer) {
+        clearTimeout(hardwareTimer);
+      }
+
       monitoringStarted = false;
+      hardwareWasLive = false;
 
       await signOut(auth);
 
@@ -521,7 +565,8 @@
         loginScreen.classList.add("hidden");
         dashboard.classList.remove("hidden");
 
-        firebaseStatusEl.textContent = "Connected";
+        firebaseStatusEl.textContent = "Waiting for Hardware";
+        showWaitingForHardware();
 
         startRealtimeMonitoring();
 
@@ -544,9 +589,6 @@
 
     function startRealtimeMonitoring() {
 
-      if (monitoringStarted) return;
-      monitoringStarted = true;
-
       const monitorRef =
         ref(db, "temperatureMonitoring");
 
@@ -556,26 +598,56 @@
 
         (snapshot) => {
 
-          // Fresh Firebase data received from the hardware.
-          resetHardwareTimer();
-
           const data = snapshot.val();
 
           if (!data) {
+            if (!hardwareWasLive) {
+              showWaitingForHardware();
+            } else {
+              showHardwareOffline();
+            }
+            return;
+          }
 
-            firebaseStatusEl.textContent =
-              "No data";
+          // A valid temperature value is our hardware-live signal.
+          const rawTemperature = data.temperature;
+
+          if (rawTemperature === undefined ||
+              rawTemperature === null ||
+              rawTemperature === "") {
+
+            if (!hardwareWasLive) {
+              showWaitingForHardware();
+            } else {
+              showHardwareOffline();
+            }
 
             return;
           }
+
+          const liveTemperature = Number(rawTemperature);
+
+          if (!Number.isFinite(liveTemperature)) {
+
+            if (!hardwareWasLive) {
+              showWaitingForHardware();
+            } else {
+              showHardwareOffline();
+            }
+
+            return;
+          }
+
+          // Hardware is now confirmed live.
+          hardwareWasLive = true;
+          resetHardwareTimer();
 
 
           // -----------------------------------------------
           // TEMPERATURE
           // -----------------------------------------------
 
-          const temperature =
-            Number(data.temperature ?? 0);
+          const temperature = liveTemperature;
 
           temperatureEl.textContent =
             temperature.toFixed(1) + " °C";
@@ -694,9 +766,12 @@
 
           console.error(error);
 
-          firebaseStatusEl.textContent =
-            "Database Error";
-
+          if (hardwareWasLive) {
+            showHardwareOffline();
+          } else {
+            showWaitingForHardware();
+            firebaseStatusEl.textContent = "Waiting for Hardware";
+          }
         }
       );
     }
