@@ -1,850 +1,701 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP8266 Temperature Monitor</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP8266 Temperature Monitor</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f7fb;
-      color: #172033;
-    }
-
-    .container {
-      width: min(1100px, 94%);
-      margin: auto;
-      padding: 22px 0 40px;
-    }
-
-    .header {
-      background: #172033;
-      color: white;
-      padding: 20px;
-      border-radius: 18px;
-      margin-bottom: 18px;
-    }
-
-    .header h1 { margin: 0 0 6px; font-size: 24px; }
-    .header p { margin: 0; opacity: .8; }
-
-    .card {
-      background: white;
-      border-radius: 18px;
-      padding: 20px;
-      box-shadow: 0 6px 20px rgba(0,0,0,.07);
-      margin-bottom: 18px;
-    }
-
-    .login-card {
-      max-width: 440px;
-      margin: 50px auto;
-    }
-
-    input {
-      width: 100%;
-      padding: 13px;
-      margin: 7px 0 12px;
-      border: 1px solid #ccd3df;
-      border-radius: 10px;
-      font-size: 15px;
-    }
-
-    button {
-      width: 100%;
-      padding: 13px;
-      border: 0;
-      border-radius: 10px;
-      background: #2563eb;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    button:hover { opacity: .9; }
-
-    .error {
-      color: #b91c1c;
-      margin-top: 10px;
-      font-size: 14px;
-    }
-
-    .hidden { display: none !important; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-    }
-
-    .metric {
-      padding: 18px;
-      border-radius: 15px;
-      background: #f7f9fc;
-    }
-
-    .metric .label {
-      color: #657084;
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-
-    .metric .value {
-      font-size: 28px;
-      font-weight: bold;
-    }
-
-    .normal { color: #15803d; }
-    .high { color: #dc2626; }
-    .offline { color: #dc2626; font-weight: bold; }
-    .hardware-message {
-      border: 2px solid #dc2626;
-      background: #fee2e2;
-      color: #991b1b;
-      font-weight: bold;
-      padding: 15px;
-      border-radius: 14px;
-      margin-bottom: 18px;
-    }
-    .waiting-message {
-      border: 2px solid #2563eb;
-      background: #eff6ff;
-      color: #1d4ed8;
-      font-weight: bold;
-      padding: 15px;
-      border-radius: 14px;
-      margin-bottom: 18px;
-    }
-
-    .warning {
-      border: 2px solid #dc2626;
-      background: #fee2e2;
-      color: #991b1b;
-      font-weight: bold;
-      padding: 15px;
-      border-radius: 14px;
-      margin-bottom: 18px;
-      animation: blink 1s infinite alternate;
-    }
-
-    @keyframes blink {
-      from { opacity: 1; }
-      to { opacity: .65; }
-    }
-
-    .status-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: #e8eef8;
-      font-size: 13px;
-    }
-
-    .chart-wrap {
-      position: relative;
-      height: 320px;
-    }
-
-    .small {
-      color: #687386;
-      font-size: 13px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 15px;
-    }
-
-    .logout {
-      width: auto;
-      padding: 9px 14px;
-      background: #475569;
-      font-size: 14px;
-    }
-
-    @media (max-width: 650px) {
-      .grid { grid-template-columns: 1fr; }
-      .header h1 { font-size: 20px; }
-      .metric .value { font-size: 25px; }
-      .chart-wrap { height: 260px; }
-    }
-  </style>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+.container{width:min(1100px,94%);margin:auto;padding:22px 0 40px}
+.header{background:#172033;color:white;padding:20px;border-radius:18px;margin-bottom:18px}
+.header h1{margin:0 0 6px;font-size:24px}.header p{margin:0;opacity:.8}
+.card{background:white;border-radius:18px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.07);margin-bottom:18px}
+.login-card{max-width:440px;margin:50px auto}
+input{width:100%;padding:13px;margin:7px 0 12px;border:1px solid #ccd3df;border-radius:10px;font-size:15px}
+button{width:100%;padding:13px;border:0;border-radius:10px;background:#2563eb;color:white;font-size:16px;cursor:pointer}
+button:hover{opacity:.9}.error{color:#b91c1c;margin-top:10px;font-size:14px}
+.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}
+.metric{padding:18px;border-radius:15px;background:#f7f9fc}
+.metric .label{color:#657084;font-size:14px;margin-bottom:8px}
+.metric .value{font-size:28px;font-weight:bold}
+.high{color:#dc2626}.offline{color:#dc2626;font-weight:bold}
+.hardware-message,.waiting-message,.warning{padding:15px;border-radius:14px;margin-bottom:18px;font-weight:bold}
+.hardware-message{border:2px solid #dc2626;background:#fee2e2;color:#991b1b}
+.waiting-message{border:2px solid #2563eb;background:#eff6ff;color:#1d4ed8}
+.warning{border:2px solid #dc2626;background:#fee2e2;color:#991b1b;animation:blink 1s infinite alternate}
+@keyframes blink{from{opacity:1}to{opacity:.65}}
+.status-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pill{padding:8px 12px;border-radius:999px;background:#e8eef8;font-size:13px}
+.chart-wrap{position:relative;height:320px}.small{color:#687386;font-size:13px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px}
+.logout{width:auto;padding:9px 14px;background:#475569;font-size:14px}
+.debug{font-family:monospace;background:#0f172a;color:#d1fae5;padding:12px;border-radius:10px;white-space:pre-wrap;font-size:12px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.header h1{font-size:20px}.metric .value{font-size:25px}.chart-wrap{height:260px}}
+</style>
 </head>
 
 <body>
 
-  <!-- LOGIN SCREEN -->
-  <div id="loginScreen" class="container">
-    <div class="card login-card">
-      <h2>🔐 Temperature Monitor Login</h2>
-      <p class="small">Login using your Firebase Authentication account.</p>
+<div id="loginScreen" class="container">
+  <div class="card login-card">
+    <h2>🔐 Temperature Monitor Login</h2>
+    <p class="small">Login using your Firebase Authentication account.</p>
+    <form id="loginForm">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="Enter email" required>
+      <label>Password</label>
+      <input id="password" type="password" placeholder="Enter password" required>
+      <button type="submit">LOGIN</button>
+    </form>
+    <div id="loginError" class="error"></div>
+  </div>
+</div>
 
-      <form id="loginForm">
-        <label>Email</label>
-        <input id="email" type="email" placeholder="Enter email" required>
+<div id="dashboard" class="container hidden">
 
-        <label>Password</label>
-        <input id="password" type="password" placeholder="Enter password" required>
-
-        <button type="submit">LOGIN</button>
-      </form>
-
-      <div id="loginError" class="error"></div>
+  <div class="header">
+    <div class="topbar">
+      <div>
+        <h1>🌡️ ESP8266 Temperature Monitor</h1>
+        <p>Live Firebase monitoring dashboard</p>
+      </div>
+      <button id="logoutBtn" class="logout">Logout</button>
     </div>
   </div>
 
+  <div id="warning" class="warning hidden">🔴 HIGH TEMPERATURE WARNING</div>
 
-  <!-- DASHBOARD -->
-  <div id="dashboard" class="container hidden">
-
-    <div class="header">
-      <div class="topbar">
-        <div>
-          <h1>🌡️ ESP8266 Temperature Monitor</h1>
-          <p>Live Firebase monitoring dashboard</p>
-        </div>
-        <button id="logoutBtn" class="logout">Logout</button>
-      </div>
-    </div>
-
-    <div id="warning" class="warning hidden">
-      🔴 HIGH TEMPERATURE WARNING
-    </div>
-
-    <div id="hardwareWaiting" class="waiting-message hidden">
-      🔵 WAITING FOR ESP8266
-      <br>
-      <span class="small">Dashboard data will appear when the hardware comes online.</span>
-    </div>
-
-    <div id="hardwareOffline" class="hardware-message hidden">
-      🔴 ESP8266 HARDWARE OFFLINE
-      <br>
-      <span class="small">The dashboard was live, but no new hardware data has been received.</span>
-    </div>
-
-    <div class="card">
-      <div class="status-row">
-        <div class="pill">Firebase: <b id="firebaseStatus">Connecting...</b></div>
-        <div class="pill">Last update: <b id="lastUpdate">--</b></div>
-      </div>
-    </div>
-
-    <div class="grid">
-
-      <div class="metric">
-        <div class="label">🌡️ Temperature</div>
-        <div class="value" id="temperature">-- °C</div>
-      </div>
-
-      <div class="metric">
-        <div class="label">💧 Humidity</div>
-        <div class="value" id="humidity">-- %</div>
-      </div>
-
-      <div class="metric">
-        <div class="label">📊 Status</div>
-        <div class="value" id="status">--</div>
-      </div>
-
-      <div class="metric">
-        <div class="label">📶 Wi-Fi</div>
-        <div class="value" id="wifi">--</div>
-      </div>
-
-      <div class="metric">
-        <div class="label">⬆️ High Limit</div>
-        <div class="value" id="highLimit">-- °C</div>
-      </div>
-
-      <div class="metric">
-        <div class="label">⬇️ Low Limit</div>
-        <div class="value" id="lowLimit">-- °C</div>
-      </div>
-
-      <div class="metric">
-        <div class="label">📱 Device IP</div>
-        <div class="value" id="deviceIP" style="font-size:20px;">--</div>
-      </div>
-
-    </div>
-
-    <div class="card">
-      <h2>📈 Live Temperature Graph</h2>
-      <p class="small">
-        The graph keeps the latest 30 readings while this dashboard is open.
-      </p>
-
-      <div class="chart-wrap">
-        <canvas id="temperatureChart"></canvas>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Firebase Path</h3>
-      <p class="small">
-        /temperatureMonitoring
-      </p>
-    </div>
-
+  <div id="hardwareWaiting" class="waiting-message hidden">
+    🔵 WAITING FOR ESP8266
+    <br><span class="small">Dashboard data will appear when the hardware comes online.</span>
   </div>
 
+  <div id="hardwareOffline" class="hardware-message hidden">
+    🔴 ESP8266 HARDWARE OFFLINE
+    <br><span class="small">Live cards are reset, but the graph keeps its previous readings.</span>
+  </div>
 
-  <!-- Firebase SDK -->
-  <script type="module">
+  <div class="card">
+    <div class="status-row">
+      <div class="pill">Firebase: <b id="firebaseStatus">Connecting...</b></div>
+      <div class="pill">Last update: <b id="lastUpdate">--</b></div>
+    </div>
+  </div>
 
-    import { initializeApp }
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  <div class="grid">
+    <div class="metric"><div class="label">🌡️ Temperature</div><div class="value" id="temperature">0.0 °C</div></div>
+    <div class="metric"><div class="label">💧 Humidity</div><div class="value" id="humidity">0.0 %</div></div>
+    <div class="metric"><div class="label">📊 Status</div><div class="value" id="status">OFFLINE</div></div>
+    <div class="metric"><div class="label">📶 Wi-Fi</div><div class="value" id="wifi">DISCONNECTED</div></div>
+    <div class="metric"><div class="label">⬆️ High Limit</div><div class="value" id="highLimit">0.0 °C</div></div>
+    <div class="metric"><div class="label">⬇️ Low Limit</div><div class="value" id="lowLimit">0.0 °C</div></div>
+    <div class="metric"><div class="label">📱 Device IP</div><div class="value" id="deviceIP" style="font-size:20px;">0.0.0.0</div></div>
+  </div>
 
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  <div class="card">
+    <h2>📈 Live Temperature Graph</h2>
+    <p class="small">Latest 30 valid temperature readings while the dashboard is open.</p>
+    <div class="chart-wrap"><canvas id="temperatureChart"></canvas></div>
+  </div>
 
-    import {
-      getDatabase,
-      ref,
-      onValue,
-      get
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  <div class="card">
+    <h3>Firebase Path</h3>
+    <p class="small"><b>/temperatureMonitoring</b></p>
+    <p class="small">The dashboard reads all live cards and the graph from this same Firebase node.</p>
+  </div>
 
+  <div class="card">
+    <h3>Debug Information</h3>
+    <p class="small">If any card still shows 0, open this section and check the field names received from Firebase.</p>
+    <div id="debugData" class="debug">Waiting for Firebase data...</div>
+  </div>
 
-    // =====================================================
-    // FIREBASE CONFIGURATION
-    // =====================================================
-    //
-    // IMPORTANT:
-    // The Firebase configuration visible in your screenshot
-    // belongs to "esp32-relay-control-01".
-    //
-    // Your temperature project is:
-    // "esp-32-temperature-monitoring"
-    //
-    // Therefore DO NOT paste the relay-control config here.
-    //
-    // Get this project's Web App config from:
-    // Firebase Console
-    // -> Project Settings
-    // -> General
-    // -> Your apps
-    // -> Web app
-    //
-    // Replace the values below with your temperature project's
-    // Web App configuration.
-    // =====================================================
+</div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyABmRPFlXUFkGLep6c1qdKv8P6SNoq0qb4",
-      authDomain: "esp-32-temperature-monitoring.firebaseapp.com",
-      databaseURL: "https://esp-32-temperature-monitoring-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "esp-32-temperature-monitoring",
-      storageBucket: "esp-32-temperature-monitoring.firebasestorage.app",
-      messagingSenderId: "PASTE_TEMPERATURE_PROJECT_MESSAGING_SENDER_ID_HERE",
-      appId: "PASTE_TEMPERATURE_PROJECT_APP_ID_HERE"
-    };
+<script type="module">
 
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+import {
+  getDatabase,
+  ref,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 
-    // =====================================================
-    // HTML ELEMENTS
-    // =====================================================
+/* =========================================================
+   FIREBASE CONFIGURATION
+   =========================================================
+   Your database/project from the existing dashboard:
+   esp-32-temperature-monitoring
 
-    const loginScreen = document.getElementById("loginScreen");
-    const dashboard = document.getElementById("dashboard");
+   Keep the databaseURL exactly as below.
+   Replace only MESSAGING_SENDER_ID and APP_ID with the
+   values from Firebase Console > Project settings > Your apps.
+   ========================================================= */
 
-    const loginForm = document.getElementById("loginForm");
-    const loginError = document.getElementById("loginError");
+const firebaseConfig = {
+  apiKey: "AIzaSyABmRPFlXUFkGLep6c1qdKv8P6SNoq0qb4",
+  authDomain: "esp-32-temperature-monitoring.firebaseapp.com",
+  databaseURL: "https://esp-32-temperature-monitoring-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "esp-32-temperature-monitoring",
+  storageBucket: "esp-32-temperature-monitoring.firebasestorage.app",
+  messagingSenderId: "PASTE_TEMPERATURE_PROJECT_MESSAGING_SENDER_ID_HERE",
+  appId: "PASTE_TEMPERATURE_PROJECT_APP_ID_HERE"
+};
 
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    const temperatureEl = document.getElementById("temperature");
-    const humidityEl = document.getElementById("humidity");
-    const statusEl = document.getElementById("status");
-    const wifiEl = document.getElementById("wifi");
-    const highLimitEl = document.getElementById("highLimit");
-    const lowLimitEl = document.getElementById("lowLimit");
-    const deviceIPEl = document.getElementById("deviceIP");
-
-    const warningEl = document.getElementById("warning");
-
-    const firebaseStatusEl =
-      document.getElementById("firebaseStatus");
-
-    const lastUpdateEl =
-      document.getElementById("lastUpdate");
-
-    const hardwareWaitingEl =
-      document.getElementById("hardwareWaiting");
-
-    const hardwareOfflineEl =
-      document.getElementById("hardwareOffline");
-
-    // ESP8266 heartbeat is written to lastSeen every 5 seconds.
-    // Dashboard checks it every 1 second.
-    const HARDWARE_TIMEOUT = 5000;
-    const HEARTBEAT_CHECK_INTERVAL = 1000;
-
-    let hardwareTimer = null;
-    let heartbeatInterval = null;
-    let monitoringStarted = false;
-
-    // Important:
-    // false = hardware has NEVER been seen online in this session.
-    // true  = hardware was live at least once, so a later disconnect
-    //         should show OFFLINE on the dashboard.
-    let hardwareWasLive = false;
-
-    function showWaitingForHardware() {
-      hardwareWaitingEl.classList.remove("hidden");
-      hardwareOfflineEl.classList.add("hidden");
-
-      // No hardware data yet: show zero/default values.
-      temperatureEl.textContent = "0.0 °C";
-      humidityEl.textContent = "0.0 %";
-      statusEl.textContent = "OFFLINE";
-      wifiEl.textContent = "DISCONNECTED";
-      highLimitEl.textContent = "0.0 °C";
-      lowLimitEl.textContent = "0.0 °C";
-      deviceIPEl.textContent = "0.0.0.0";
-
-      temperatureEl.classList.remove("high");
-      statusEl.classList.remove("high");
-      warningEl.classList.add("hidden");
-    }
-
-    function showHardwareLive() {
-      hardwareWaitingEl.classList.add("hidden");
-      hardwareOfflineEl.classList.add("hidden");
-      firebaseStatusEl.classList.remove("offline");
-      firebaseStatusEl.textContent = "Live";
-    }
-
-    function showHardwareOffline() {
-      hardwareWaitingEl.classList.add("hidden");
-      hardwareOfflineEl.classList.remove("hidden");
-      firebaseStatusEl.classList.add("offline");
-      firebaseStatusEl.textContent = "Hardware Offline";
-
-      // Reset dashboard values when ESP8266 disconnects.
-      temperatureEl.textContent = "0.0 °C";
-      humidityEl.textContent = "0.0 %";
-      statusEl.textContent = "OFFLINE";
-      wifiEl.textContent = "DISCONNECTED";
-      highLimitEl.textContent = "0.0 °C";
-      lowLimitEl.textContent = "0.0 °C";
-      deviceIPEl.textContent = "0.0.0.0";
-
-      temperatureEl.classList.remove("high");
-      statusEl.classList.remove("high");
-      warningEl.classList.add("hidden");
-
-      // IMPORTANT: Keep the existing graph during hardware offline.
-      // Only the live metric cards are reset to zero.
-      // The graph remains as historical data until new readings arrive.
-    }
-
-    function resetHardwareTimer() {
-      if (hardwareTimer) clearTimeout(hardwareTimer);
-
-      showHardwareLive();
-
-      hardwareTimer = setTimeout(() => {
-        if (hardwareWasLive) showHardwareOffline();
-      }, HARDWARE_TIMEOUT);
-    }
-
-    // =====================================================
-    // HARDWARE HEARTBEAT CHECK
-    // =====================================================
-
-    async function checkHardwareHeartbeat() {
-      if (!monitoringStarted) return;
-
-      try {
-        const heartbeatRef = ref(db, "temperatureMonitoring/lastSeen");
-        const snapshot = await get(heartbeatRef);
-        const lastSeen = snapshot.val();
-
-        if (lastSeen === null || lastSeen === undefined) {
-          if (hardwareWasLive) showHardwareOffline();
-          else showWaitingForHardware();
-          return;
-        }
-
-        const age = Date.now() - Number(lastSeen);
-
-        if (Number.isFinite(age) && age <= HARDWARE_TIMEOUT) {
-          hardwareWasLive = true;
-          showHardwareLive();
-        } else if (hardwareWasLive) {
-          showHardwareOffline();
-        } else {
-          showWaitingForHardware();
-        }
-      } catch (error) {
-        console.error("Heartbeat check error:", error);
-      }
-    }
-
-    function startHardwareHeartbeatMonitor() {
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-      checkHardwareHeartbeat();
-      heartbeatInterval = setInterval(checkHardwareHeartbeat, HEARTBEAT_CHECK_INTERVAL);
-    }
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
 
-    // =====================================================
-    // TEMPERATURE GRAPH
-    // =====================================================
+/* =========================================================
+   HTML ELEMENTS
+   ========================================================= */
 
-    const labels = [];
-    const temperatureData = [];
+const loginScreen = document.getElementById("loginScreen");
+const dashboard = document.getElementById("dashboard");
+const loginForm = document.getElementById("loginForm");
+const loginError = document.getElementById("loginError");
+const logoutBtn = document.getElementById("logoutBtn");
 
-    const chart = new Chart(
-      document.getElementById("temperatureChart"),
-      {
-        type: "line",
+const temperatureEl = document.getElementById("temperature");
+const humidityEl = document.getElementById("humidity");
+const statusEl = document.getElementById("status");
+const wifiEl = document.getElementById("wifi");
+const highLimitEl = document.getElementById("highLimit");
+const lowLimitEl = document.getElementById("lowLimit");
+const deviceIPEl = document.getElementById("deviceIP");
 
-        data: {
-          labels: labels,
+const warningEl = document.getElementById("warning");
+const firebaseStatusEl = document.getElementById("firebaseStatus");
+const lastUpdateEl = document.getElementById("lastUpdate");
+const hardwareWaitingEl = document.getElementById("hardwareWaiting");
+const hardwareOfflineEl = document.getElementById("hardwareOffline");
+const debugDataEl = document.getElementById("debugData");
 
-          datasets: [{
-            label: "Temperature (°C)",
-            data: temperatureData,
-            tension: 0.25,
-            borderWidth: 2,
-            pointRadius: 3,
-            fill: false
-          }]
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+const MONITOR_PATH = "temperatureMonitoring";
+
+/*
+   If your ESP8266 sends a heartbeat every 5 seconds,
+   this timeout detects an offline device.
+*/
+const HARDWARE_TIMEOUT = 10000;
+
+let lastFirebaseUpdate = 0;
+let hardwareWasLive = false;
+let monitoringStarted = false;
+
+
+/* =========================================================
+   GRAPH
+   ========================================================= */
+
+const labels = [];
+const temperatureData = [];
+
+const chart = new Chart(
+  document.getElementById("temperatureChart"),
+  {
+    type: "line",
+
+    data: {
+      labels: labels,
+
+      datasets: [{
+        label: "Temperature (°C)",
+        data: temperatureData,
+        tension: 0.25,
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: false
+      }]
+    },
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      animation: false,
+
+      scales: {
+        y: {
+          title: {
+            display: true,
+            text: "Temperature °C"
+          }
         },
 
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-
-          scales: {
-            y: {
-              title: {
-                display: true,
-                text: "Temperature °C"
-              }
-            },
-
-            x: {
-              title: {
-                display: true,
-                text: "Time"
-              }
-            }
+        x: {
+          title: {
+            display: true,
+            text: "Time"
           }
         }
       }
+    }
+  }
+);
+
+
+/* =========================================================
+   HELPER FUNCTIONS
+   ========================================================= */
+
+/*
+   Reads the first available field from Firebase.
+
+   This is intentionally flexible because your ESP8266 code
+   may use slightly different names such as:
+   humidity / Humidity
+   highLimit / high_limit
+   deviceIP / ip
+*/
+function getField(data, names, defaultValue = null) {
+
+  for (const name of names) {
+
+    if (
+      data &&
+      data[name] !== undefined &&
+      data[name] !== null &&
+      data[name] !== ""
+    ) {
+      return data[name];
+    }
+  }
+
+  return defaultValue;
+}
+
+
+function numberField(data, names, defaultValue = null) {
+
+  const value = getField(data, names, defaultValue);
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : defaultValue;
+}
+
+
+function resetLiveCards() {
+
+  temperatureEl.textContent = "0.0 °C";
+  humidityEl.textContent = "0.0 %";
+  statusEl.textContent = "OFFLINE";
+  wifiEl.textContent = "DISCONNECTED";
+  highLimitEl.textContent = "0.0 °C";
+  lowLimitEl.textContent = "0.0 °C";
+  deviceIPEl.textContent = "0.0.0.0";
+
+  temperatureEl.classList.remove("high");
+  statusEl.classList.remove("high");
+  warningEl.classList.add("hidden");
+}
+
+
+function showWaiting() {
+
+  hardwareWaitingEl.classList.remove("hidden");
+  hardwareOfflineEl.classList.add("hidden");
+
+  firebaseStatusEl.classList.remove("offline");
+  firebaseStatusEl.textContent = "Waiting for Hardware";
+
+  resetLiveCards();
+}
+
+
+function showOffline() {
+
+  hardwareWaitingEl.classList.add("hidden");
+  hardwareOfflineEl.classList.remove("hidden");
+
+  firebaseStatusEl.classList.add("offline");
+  firebaseStatusEl.textContent = "Hardware Offline";
+
+  resetLiveCards();
+
+  /*
+     IMPORTANT:
+     We DO NOT clear labels[] or temperatureData[].
+     Therefore the graph remains visible when hardware goes offline.
+  */
+}
+
+
+function showLive() {
+
+  hardwareWaitingEl.classList.add("hidden");
+  hardwareOfflineEl.classList.add("hidden");
+
+  firebaseStatusEl.classList.remove("offline");
+  firebaseStatusEl.textContent = "Live";
+}
+
+
+/* =========================================================
+   UPDATE DASHBOARD FROM FIREBASE
+   ========================================================= */
+
+function updateDashboard(data) {
+
+  if (!data || typeof data !== "object") {
+    showWaiting();
+    return;
+  }
+
+  debugDataEl.textContent =
+    JSON.stringify(data, null, 2);
+
+
+  /*
+     TEMPERATURE
+     ---------------------------------------------------------
+     Temperature is mandatory because the graph already uses it.
+  */
+
+  const temperature = numberField(
+    data,
+    ["temperature", "Temperature", "temp", "Temp"],
+    null
+  );
+
+  if (temperature === null) {
+    showOffline();
+    return;
+  }
+
+
+  /*
+     HUMIDITY
+  */
+
+  const humidity = numberField(
+    data,
+    ["humidity", "Humidity", "hum", "Hum"],
+    0
+  );
+
+
+  /*
+     LIMITS
+  */
+
+  const highLimit = numberField(
+    data,
+    ["highLimit", "HighLimit", "high_limit", "highTempLimit"],
+    25
+  );
+
+  const lowLimit = numberField(
+    data,
+    ["lowLimit", "LowLimit", "low_limit", "lowTempLimit"],
+    -1
+  );
+
+
+  /*
+     STATUS
+
+     If ESP8266 sends status, use it.
+
+     If it doesn't send status, calculate it from limits.
+  */
+
+  let status = getField(
+    data,
+    ["status", "Status", "state", "State"],
+    null
+  );
+
+  if (status === null) {
+
+    if (temperature >= highLimit) {
+      status = "HIGH";
+    }
+
+    else if (temperature <= lowLimit) {
+      status = "LOW";
+    }
+
+    else {
+      status = "NORMAL";
+    }
+  }
+
+
+  /*
+     WIFI
+
+     Supports wifi, WiFi, wifiStatus, connectionStatus.
+  */
+
+  let wifi = getField(
+    data,
+    ["wifi", "WiFi", "wifiStatus", "connectionStatus"],
+    null
+  );
+
+  if (wifi === null) {
+    wifi = "CONNECTED";
+  }
+
+
+  /*
+     DEVICE IP
+  */
+
+  const deviceIP = getField(
+    data,
+    ["deviceIP", "DeviceIP", "ip", "IP", "ipAddress"],
+    "--"
+  );
+
+
+  /* ---------------------------------------------------------
+     UPDATE HTML
+     --------------------------------------------------------- */
+
+  temperatureEl.textContent =
+    temperature.toFixed(1) + " °C";
+
+  humidityEl.textContent =
+    Number(humidity).toFixed(1) + " %";
+
+  statusEl.textContent =
+    String(status);
+
+  wifiEl.textContent =
+    String(wifi);
+
+  highLimitEl.textContent =
+    Number(highLimit).toFixed(1) + " °C";
+
+  lowLimitEl.textContent =
+    Number(lowLimit).toFixed(1) + " °C";
+
+  deviceIPEl.textContent =
+    String(deviceIP);
+
+
+  /*
+     HIGH TEMPERATURE WARNING
+  */
+
+  if (temperature >= highLimit) {
+
+    warningEl.classList.remove("hidden");
+
+    temperatureEl.classList.add("high");
+    statusEl.classList.add("high");
+
+  } else {
+
+    warningEl.classList.add("hidden");
+
+    temperatureEl.classList.remove("high");
+    statusEl.classList.remove("high");
+  }
+
+
+  /*
+     LIVE GRAPH
+
+     Only valid temperature readings are added.
+     Offline/zero fallback values are NEVER added.
+  */
+
+  const now = new Date().toLocaleTimeString();
+
+  labels.push(now);
+  temperatureData.push(temperature);
+
+  if (labels.length > 30) {
+    labels.shift();
+    temperatureData.shift();
+  }
+
+  chart.update();
+
+
+  /* ---------------------------------------------------------
+     STATUS
+     --------------------------------------------------------- */
+
+  lastFirebaseUpdate = Date.now();
+  hardwareWasLive = true;
+
+  showLive();
+
+  lastUpdateEl.textContent =
+    new Date().toLocaleTimeString();
+}
+
+
+/* =========================================================
+   FIREBASE REALTIME MONITORING
+   ========================================================= */
+
+function startRealtimeMonitoring() {
+
+  const monitorRef = ref(db, MONITOR_PATH);
+
+  onValue(
+
+    monitorRef,
+
+    (snapshot) => {
+
+      const data = snapshot.val();
+
+      console.log("Firebase /temperatureMonitoring:", data);
+
+      updateDashboard(data);
+    },
+
+    (error) => {
+
+      console.error("Firebase database error:", error);
+
+      if (hardwareWasLive) {
+        showOffline();
+      } else {
+        showWaiting();
+      }
+    }
+  );
+}
+
+
+/* =========================================================
+   OFFLINE CHECK
+
+   If no new Firebase update arrives for HARDWARE_TIMEOUT ms,
+   reset cards but keep the graph.
+   ========================================================= */
+
+setInterval(() => {
+
+  if (!monitoringStarted) return;
+
+  if (lastFirebaseUpdate === 0) return;
+
+  const age = Date.now() - lastFirebaseUpdate;
+
+  if (age > HARDWARE_TIMEOUT) {
+
+    if (hardwareWasLive) {
+      showOffline();
+    }
+  }
+
+}, 1000);
+
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+loginForm.addEventListener("submit", async (event) => {
+
+  event.preventDefault();
+
+  loginError.textContent = "";
+
+  const email =
+    document.getElementById("email").value.trim();
+
+  const password =
+    document.getElementById("password").value;
+
+  try {
+
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
     );
 
+  }
 
-    // =====================================================
-    // LOGIN
-    // =====================================================
+  catch (error) {
 
-    loginForm.addEventListener("submit", async (event) => {
+    console.error("Login error:", error);
 
-      event.preventDefault();
+    loginError.textContent =
+      "Login failed: " + error.message;
+  }
+});
 
-      loginError.textContent = "";
 
-      const email =
-        document.getElementById("email").value.trim();
+/* =========================================================
+   LOGOUT
+   ========================================================= */
 
-      const password =
-        document.getElementById("password").value;
+logoutBtn.addEventListener("click", async () => {
 
+  monitoringStarted = false;
+  hardwareWasLive = false;
+  lastFirebaseUpdate = 0;
 
-      try {
+  await signOut(auth);
+});
 
-        await signInWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
 
-      }
+/* =========================================================
+   AUTH STATE
+   ========================================================= */
 
-      catch (error) {
+onAuthStateChanged(auth, (user) => {
 
-        console.error(error);
+  if (user) {
 
-        loginError.textContent =
-          "Login failed: " + error.message;
-      }
+    loginScreen.classList.add("hidden");
+    dashboard.classList.remove("hidden");
 
-    });
+    monitoringStarted = true;
+    hardwareWasLive = false;
+    lastFirebaseUpdate = 0;
 
+    showWaiting();
 
-    // =====================================================
-    // LOGOUT
-    // =====================================================
+    startRealtimeMonitoring();
 
-    logoutBtn.addEventListener("click", async () => {
+  }
 
-      if (hardwareTimer) {
-        clearTimeout(hardwareTimer);
-      }
+  else {
 
-      monitoringStarted = false;
-      hardwareWasLive = false;
+    monitoringStarted = false;
 
-      await signOut(auth);
+    dashboard.classList.add("hidden");
+    loginScreen.classList.remove("hidden");
 
-    });
+    firebaseStatusEl.textContent =
+      "Disconnected";
+  }
 
+});
 
-    // =====================================================
-    // AUTH STATE
-    // =====================================================
-
-    onAuthStateChanged(auth, (user) => {
-
-      if (user) {
-
-        loginScreen.classList.add("hidden");
-        dashboard.classList.remove("hidden");
-
-        firebaseStatusEl.textContent = "Waiting for Hardware";
-        showWaitingForHardware();
-        monitoringStarted = true;
-        startHardwareHeartbeatMonitor();
-        startRealtimeMonitoring();
-
-      }
-
-      else {
-
-        dashboard.classList.add("hidden");
-        loginScreen.classList.remove("hidden");
-
-        firebaseStatusEl.textContent = "Disconnected";
-      }
-
-    });
-
-
-    // =====================================================
-    // REALTIME DATABASE
-    // =====================================================
-
-    function startRealtimeMonitoring() {
-
-      const monitorRef =
-        ref(db, "temperatureMonitoring");
-
-
-      onValue(
-        monitorRef,
-
-        (snapshot) => {
-
-          const data = snapshot.val();
-
-          if (!data) {
-            if (!hardwareWasLive) {
-              showWaitingForHardware();
-            } else {
-              showHardwareOffline();
-            }
-            return;
-          }
-
-          // A valid temperature value is our hardware-live signal.
-          const rawTemperature = data.temperature;
-
-          if (rawTemperature === undefined ||
-              rawTemperature === null ||
-              rawTemperature === "") {
-
-            if (!hardwareWasLive) {
-              showWaitingForHardware();
-            } else {
-              showHardwareOffline();
-            }
-
-            return;
-          }
-
-          const liveTemperature = Number(rawTemperature);
-
-          if (!Number.isFinite(liveTemperature)) {
-
-            if (!hardwareWasLive) {
-              showWaitingForHardware();
-            } else {
-              showHardwareOffline();
-            }
-
-            return;
-          }
-
-          // Heartbeat monitor is the hardware-live authority.
-          // Keep the graph/live values updated when Firebase sends readings.
-          hardwareWasLive = true;
-          resetHardwareTimer();
-
-
-          // -----------------------------------------------
-          // TEMPERATURE
-          // -----------------------------------------------
-
-          const temperature = liveTemperature;
-
-          temperatureEl.textContent =
-            temperature.toFixed(1) + " °C";
-
-
-          // -----------------------------------------------
-          // HUMIDITY
-          // -----------------------------------------------
-
-          const humidity =
-            Number(data.humidity ?? 0);
-
-          humidityEl.textContent =
-            humidity.toFixed(1) + " %";
-
-
-          // -----------------------------------------------
-          // STATUS
-          // -----------------------------------------------
-
-          const status =
-            String(data.status ?? "UNKNOWN");
-
-          statusEl.textContent =
-            status;
-
-
-          // -----------------------------------------------
-          // WIFI
-          // -----------------------------------------------
-
-          wifiEl.textContent =
-            String(data.wifi ?? "UNKNOWN");
-
-
-          // -----------------------------------------------
-          // LIMITS
-          // -----------------------------------------------
-
-          const highLimit =
-            Number(data.highLimit ?? 25);
-
-          const lowLimit =
-            Number(data.lowLimit ?? -1);
-
-          highLimitEl.textContent =
-            highLimit.toFixed(1) + " °C";
-
-          lowLimitEl.textContent =
-            lowLimit.toFixed(1) + " °C";
-
-
-          // -----------------------------------------------
-          // DEVICE IP
-          // -----------------------------------------------
-
-          deviceIPEl.textContent =
-            String(data.deviceIP ?? "--");
-
-
-          // -----------------------------------------------
-          // HIGH TEMPERATURE WARNING
-          // -----------------------------------------------
-
-          if (temperature >= highLimit) {
-
-            warningEl.classList.remove("hidden");
-
-            temperatureEl.classList.add("high");
-            statusEl.classList.add("high");
-
-          }
-
-          else {
-
-            warningEl.classList.add("hidden");
-
-            temperatureEl.classList.remove("high");
-            statusEl.classList.remove("high");
-          }
-
-
-          // -----------------------------------------------
-          // GRAPH
-          // -----------------------------------------------
-
-          const now =
-            new Date().toLocaleTimeString();
-
-          labels.push(now);
-        temperatureData.push(temperature);
-
-
-          // Keep latest 30 readings
-          if (labels.length > 30) {
-            labels.shift();
-            temperatureData.shift();
-          }
-
-
-          chart.update();
-
-
-          // -----------------------------------------------
-          // LAST UPDATE
-          // -----------------------------------------------
-
-          lastUpdateEl.textContent =
-            new Date().toLocaleTimeString();
-
-          firebaseStatusEl.textContent =
-            "Live";
-        },
-
-        (error) => {
-
-          console.error(error);
-
-          if (hardwareWasLive) {
-            showHardwareOffline();
-          } else {
-            showWaitingForHardware();
-            firebaseStatusEl.textContent = "Waiting for Hardware";
-          }
-        }
-      );
-    }
-
-  </script>
+</script>
 
 </body>
 </html>
